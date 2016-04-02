@@ -1,0 +1,73 @@
+---
+title: "Activity Prediction"
+author: "Shivang Aggarwal"
+date: "26 March 2016"
+output: html_document
+---
+
+###Initial Work
+
+First, we read the data into RStudio and load the caret package.
+There are 160 variables in the dataset. Upon initial investigation, it is found that many variables have very few rows with any sort of data i.e. most of the observations for those variables are NA.
+Hence, we remove those variables from consideration leaving us with 60 variables.
+
+###Cross Validation
+
+For cross validation we use the k folds method and using the first fold we create our first training and test sets.
+
+```{r, cache=TRUE}
+pml<-read.csv("pml-training.csv",na.strings = c("NA",""," "))
+library("caret")
+pmltemp<-pml[ , colSums(is.na(pml)) == 0]
+tr<-createFolds(pmltemp$classe,returnTrain = TRUE)
+pml1<-pmltemp[tr[[1]],]
+pml1t<-pmltemp[-tr[[1]],]
+```
+
+###First Model Creation
+
+We'll use the 1st K-fold for this training.
+Then, we train the model using the boosting method with the following code:
+
+```{r, cache=TRUE, results="hide", warning=FALSE}
+modtemp<-train(classe~.,data=pml1,method="gbm",verbose="FALSE")
+pre<-predict(modtemp,pml1t)
+pmltest<-read.csv("pml-testing.csv",na.strings = c("NA",""," "))
+pretest<-predict(modtemp,pmltest)
+```
+
+```{r, cache=TRUE}
+table(pre,pml1t$classe)
+```
+
+As can be seen in the table, there is 100% accuracy.
+But in the testing set, it predicted all cases to have classe 'A'.
+So, we decided to remove some more variables from our data. Thus, we create our new model with 59 variables.
+Also, we use the boosting method.
+
+###Second Model Creation
+
+```{r, cache=TRUE, results="hide", warning=FALSE}
+pmltemp<-pml[ , colSums(is.na(pml)) == 0]
+pmltemp<-pmltemp[,-1]
+pml1<-pmltemp[tr[[2]],]
+pml1t<-pmltemp[-tr[[2]],]
+modtemp<-train(classe~.,data=pml1,method="gbm",verbose="FALSE")
+pre<-predict(modtemp,pml1t)
+pretest<-predict(modtemp,pmltest)
+```
+
+In the above model training, we use the second k-fold.
+
+###Results
+
+```{r,cache=TRUE}
+confusionMatrix(pre,pml1t$classe)
+```
+
+On our subtesting set, we have more than 99% accuracy i.e. the out-of-sample error.
+Also, it gave us a very good result on our testing set as confirmed by the final quiz of the course as shown below.
+
+```{r}
+pretest
+```
